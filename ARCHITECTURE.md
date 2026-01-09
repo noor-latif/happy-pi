@@ -112,6 +112,16 @@ spawn_session({ repo, instruction, window_name })
 
 Window names auto-generate from repo name or timestamp if not provided.
 
+### Prompt Limitations
+
+Instructions passed to `spawn_session` have these constraints:
+
+- **Max length**: 500 characters (truncated by server.js)
+- **Works**: Alphanumeric, spaces, basic punctuation (`.,-:;!?`)
+- **May break**: Newlines, backticks, backslashes, `$variables`
+
+This is acceptable because prompts are natural language instructions, not code. The MCP server sanitizes `repo` and `window_name` via allowlist, while instructions are passed safely via array args with `shell:false`.
+
 ### .mcp.json Handling
 
 - **Project sessions** use user-level MCPs added via `claude mcp add` (persisted in ~/.claude-docker)

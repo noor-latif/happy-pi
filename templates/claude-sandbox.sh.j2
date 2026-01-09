@@ -53,8 +53,17 @@ if [[ -z "$1" ]]; then
 fi
 
 # --spawn "workdir" "prompt" "window_name": MCP entry point for spawning sessions
-# Note: Prompt is sanitized by MCP server (server.js) before reaching here
-# Single quotes are escaped; complex chars (newlines, backticks) may not work
+#
+# Prompt Escaping Limitations:
+#   - Max length: 500 chars (truncated by server.js)
+#   - Single quotes: escaped via '\'' substitution
+#   - Works: alphanumeric, spaces, basic punctuation (.,-:;!?)
+#   - May break: newlines, backticks, backslashes, $variables
+#   - Safe: prompts are natural language instructions, not code
+#
+# The MCP server (server.js) sanitizes repo/window_name inputs via allowlist.
+# Instructions are NOT sanitized (may contain punctuation) but are passed via
+# array args to spawn() with shell:false, preventing injection.
 if [[ "$1" == "--spawn" ]]; then
     SESSION_DIR="${2:-/workspace}"
     PROMPT="$3"
