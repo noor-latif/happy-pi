@@ -1,6 +1,6 @@
 # Pi-Pai
 
-[![Ansible Lint](https://github.com/KenDev-AB/pi-pai/actions/workflows/lint.yml/badge.svg)](https://github.com/KenDev-AB/pi-pai/actions/workflows/lint.yml)
+[![CI](https://github.com/KenDev-AB/pi-pai/actions/workflows/ci.yml/badge.svg)](https://github.com/KenDev-AB/pi-pai/actions/workflows/ci.yml)
 
 > **Alpha** - This project has been tested on Raspberry Pi 4 but is still under active development. Contributions welcome!
 
