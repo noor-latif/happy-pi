@@ -36,3 +36,7 @@ Thumbs.db
 # Claude Code
 .claude/settings.local.json
 group_vars/all/zzz_local.yml
+
+# Node.js
+node_modules/
+coverage/

@@ -427,6 +427,7 @@
       loop:
         - package.json
         - start.sh
+        - lib.js
       notify: Restart tmux-control-plane
       tags: [mcp]
 
@@ -461,6 +462,13 @@
         mode: '0644'
       notify: Restart claude-tmux
       tags: [mcp]
+
+    - name: Deploy project session MCP config
+      ansible.builtin.template:
+        src: templates/mcp.json.j2
+        dest: "{{ claude_docker_dir }}/.mcp.json"
+        mode: '0644'
+      tags: [mcp, configs]
 
     # =========================================================================
     # Secrets (from vault)

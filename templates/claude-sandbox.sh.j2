@@ -4,6 +4,8 @@ set -e
 # Project session: full access to ~/Repos
 run_project() {
     local prompt="$1"
+    local workdir="${2:-/workspace}"
+    local window_name="$3"
     docker run -it --rm \
         --init \
         --memory {{ docker_memory_limit }} \
@@ -12,7 +14,7 @@ run_project() {
         -v ~/.claude-docker:/home/node/.claude \
         -v ~/.claude-docker/.ssh:/home/node/.ssh:ro \
         -v ~/.claude-docker/.happy:/home/node/.happy \
-        -w /workspace \
+        -w "$workdir" \
         -e TERM=xterm-256color \
         -e COLORTERM=truecolor \
         -e TMPDIR=/home/node/.claude/tmp \
@@ -20,12 +22,13 @@ run_project() {
         -e GITHUB_PAT="$(cat ~/.claude-docker/.github_token 2>/dev/null)" \
         -e CONTEXT7_TOKEN="$(cat ~/.claude-docker/.context7_token 2>/dev/null)" \
         -e CLAUDE_CONFIG_DIR="/home/node/.claude" \
+        ${window_name:+-e TMUX_WINDOW_NAME="$window_name"} \
         claude-code ${prompt:+"$prompt"}
 }
 
-# --run "prompt": internal, called by tmux to run project session
+# --run "prompt" "workdir" "window_name": internal, called by tmux to run project session
 if [[ "$1" == "--run" ]]; then
-    run_project "$2"
+    run_project "$2" "$3" "$4"
     exit 0
 fi
 
@@ -49,20 +52,29 @@ if [[ -z "$1" ]]; then
     exit 0
 fi
 
-# --spawn "prompt" "window_name": MCP entry point for spawning sessions
+# --spawn "workdir" "prompt" "window_name": MCP entry point for spawning sessions
 # Note: Prompt is sanitized by MCP server (server.js) before reaching here
 # Single quotes are escaped; complex chars (newlines, backticks) may not work
 if [[ "$1" == "--spawn" ]]; then
-    PROMPT="$2"
-    WINDOW_NAME="${3:-session-$(date +%s)}"
+    SESSION_DIR="${2:-/workspace}"
+    PROMPT="$3"
+    WINDOW_NAME="${4:-session-$(date +%s)}"
+
+    # Create session directory on host if it's a subdirectory of /workspace
+    if [[ "$SESSION_DIR" != "/workspace" ]]; then
+        HOST_DIR="${HOME}/Repos/${SESSION_DIR#/workspace/}"
+        mkdir -p "$HOST_DIR"
+    fi
+
     ESCAPED="${PROMPT//\'/\'\\\'\'}"
     tmux new-window -t {{ tmux_session_name }}: -n "$WINDOW_NAME" \
-        "$HOME/claude-sandbox.sh --run '$ESCAPED'"
-    echo "Spawned window '$WINDOW_NAME'"
+        "$HOME/claude-sandbox.sh --run '$ESCAPED' '$SESSION_DIR' '$WINDOW_NAME'"
+    echo "Spawned window '$WINDOW_NAME' at '$SESSION_DIR'"
     exit 0
 fi
 
 echo "Usage:"
-echo "  $0                              Run control plane (isolated)"
-echo "  $0 --spawn 'prompt' 'name'      Spawn project session via MCP"
+echo "  $0                                        Run control plane (isolated)"
+echo "  $0 --spawn 'dir' 'prompt' 'name'          Spawn project session via MCP"
+echo "  $0 --run 'prompt' 'workdir' 'window_name' Internal: run project session"
 exit 1

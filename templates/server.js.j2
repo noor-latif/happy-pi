@@ -1,5 +1,6 @@
 import express from "express";
 import { execFileSync, spawn } from "child_process";
+import { sanitize, buildPrompt, generateWindowName, generateSessionDir } from "./lib.js";
 
 const app = express();
 const PORT = {{ mcp_server_port }};
@@ -14,13 +15,6 @@ function run(cmd, args = []) {
   } catch (e) {
     throw new Error(e.stderr || e.message);
   }
-}
-
-// Validate input: alphanumeric, dash, underscore, dot, slash only
-function sanitize(str, allowSlash = false) {
-  if (!str) return "";
-  const pattern = allowSlash ? /[^a-zA-Z0-9\-_./@ ]/g : /[^a-zA-Z0-9\-_. ]/g;
-  return str.replace(pattern, "");
 }
 
 const TOOLS = [
@@ -63,6 +57,18 @@ const TOOLS = [
       },
       required: ["window"]
     }
+  },
+  {
+    name: "restart_self",
+    description: "Restart current session to pick up CLAUDE.md and settings. Call after cloning a repo.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        window_name: { type: "string", description: "Current window name (from TMUX_WINDOW_NAME env var)" },
+        instruction: { type: "string", description: "Task to continue after restart" }
+      },
+      required: ["window_name"]
+    }
   }
 ];
 
@@ -81,32 +87,18 @@ const toolHandlers = {
     const safeRepo = sanitize(repo, true);  // allow slashes for URLs
     const safeInstruction = instruction ? instruction.substring(0, 500) : "";  // limit length
 
-    // Build prompt based on inputs
-    let prompt = "";
-    if (safeRepo && safeInstruction) {
-      prompt = `Clone ${safeRepo}, then ${safeInstruction}`;
-    } else if (safeRepo) {
-      prompt = `Clone ${safeRepo} and explore the codebase`;
-    } else if (safeInstruction) {
-      prompt = safeInstruction;
-    }
-
-    // Determine window name (sanitized)
-    let windowName = sanitize(window_name);
-    if (!windowName) {
-      if (safeRepo) {
-        windowName = sanitize(safeRepo.split("/").pop().replace(".git", ""));
-      } else {
-        windowName = `session-${Date.now()}`;
-      }
-    }
+    // Generate session directory, prompt, and window name using pure functions
+    const sessionDir = generateSessionDir(safeRepo);
+    const prompt = buildPrompt(safeRepo, safeInstruction);
+    const windowName = generateWindowName(safeRepo, sanitize(window_name));
 
     try {
       // Use spawn with array arguments (no shell interpolation)
+      // Args: --spawn <workdir> <prompt> <window_name>
       const result = await new Promise((resolve, reject) => {
         const child = spawn(
           `${process.env.HOME}/claude-sandbox.sh`,
-          ["--spawn", prompt, windowName],
+          ["--spawn", sessionDir, prompt, windowName],
           { timeout: 600000, shell: false }
         );
         let stdout = "", stderr = "";
@@ -119,7 +111,7 @@ const toolHandlers = {
         child.on("error", reject);
       });
       console.log("Spawned:", result);
-      return { content: [{ type: "text", text: `Spawned "${windowName}". Use list_sessions to see all windows.` }] };
+      return { content: [{ type: "text", text: `Spawned "${windowName}" at ${sessionDir}. Use list_sessions to see all windows.` }] };
     } catch (e) {
       console.error("Spawn error:", e.message);
       return { content: [{ type: "text", text: `Failed to spawn "${windowName}": ${e.message}` }], isError: true };
@@ -142,6 +134,38 @@ const toolHandlers = {
   // Alias for kill_session (same functionality, different API)
   end_session: async ({ window }) => {
     return toolHandlers.kill_session({ target: window });
+  },
+
+  restart_self: async ({ window_name, instruction }) => {
+    const safeName = sanitize(window_name);
+    const safeInstruction = instruction ? instruction.substring(0, 500) : "";
+
+    if (!safeName) {
+      return { content: [{ type: "text", text: "Error: window_name is required" }], isError: true };
+    }
+
+    try {
+      // Get current window's working directory from tmux
+      const sessionDir = run("tmux", [
+        "display-message",
+        "-t", `{{ tmux_session_name }}:${safeName}`,
+        "-p", "#{pane_current_path}"
+      ]);
+
+      // Build shell command for respawn-window
+      const escaped = safeInstruction.replace(/'/g, "'\\''");
+      const shellCmd = `${process.env.HOME}/claude-sandbox.sh --run '${escaped}' '${sessionDir}' '${safeName}'`;
+
+      // Atomic restart: kill current process and respawn in same window
+      // respawn-window -k preserves window name/index with no race conditions
+      run("tmux", ["respawn-window", "-k", "-t", `{{ tmux_session_name }}:${safeName}`, shellCmd]);
+
+      console.log("Restarted:", safeName, "at", sessionDir);
+      return { content: [{ type: "text", text: `Restarted session '${safeName}' at ${sessionDir}` }] };
+    } catch (e) {
+      console.error("Restart error:", e.message);
+      return { content: [{ type: "text", text: `Failed to restart '${safeName}': ${e.message}` }], isError: true };
+    }
   }
 };
 
