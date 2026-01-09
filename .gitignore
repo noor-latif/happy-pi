@@ -2,8 +2,8 @@
 .ansible_cache/
 *.retry
 
-# Secrets - vault.yml should be encrypted but these catch mistakes
-# Do NOT add vault.yml here - we want to track the encrypted version
+# Secrets - vault.yml.example is tracked, vault.yml is user's secrets
+group_vars/all/vault.yml
 *.vault_pass
 .vault_pass*
 *_secret*

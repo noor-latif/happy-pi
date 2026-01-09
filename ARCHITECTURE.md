@@ -161,7 +161,7 @@ This is acceptable because prompts are natural language instructions, not code. 
 | `playbook.yml` | Main entry point - all tasks with tags |
 | `group_vars/all/vars.yml` | Default configuration (don't edit - use zzz_local.yml) |
 | `group_vars/all/zzz_local.yml` | **Create this** - Your Pi host, username overrides |
-| `group_vars/all/vault.yml` | **Encrypt** - GitHub PAT, Tailscale authkey, Context7 token |
+| `group_vars/all/vault.yml.example` | Secrets template - copy to vault.yml and encrypt |
 | `templates/claude-sandbox.sh.j2` | Main launcher - routes to control plane or project session |
 | `templates/server.js.j2` | MCP server template (uses vars for port/token/session name) |
 | `templates/claude-tmux.service.j2` | Starts tmux + control plane on boot |

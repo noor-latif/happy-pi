@@ -26,6 +26,17 @@ syntax:
 # Deploy to Pi (production)
 deploy:
 	@echo ""
+	@# Verify vault.yml exists
+	@if [ ! -f group_vars/all/vault.yml ]; then \
+		echo "ERROR: group_vars/all/vault.yml not found."; \
+		echo ""; \
+		echo "Create it from the example:"; \
+		echo "  cp group_vars/all/vault.yml.example group_vars/all/vault.yml"; \
+		echo "  # Edit with your secrets, then encrypt:"; \
+		echo "  ansible-vault encrypt group_vars/all/vault.yml"; \
+		echo ""; \
+		exit 1; \
+	fi
 	@# Verify vault.yml is encrypted
 	@if ! head -1 group_vars/all/vault.yml 2>/dev/null | grep -q '^\$$ANSIBLE_VAULT'; then \
 		echo "ERROR: group_vars/all/vault.yml is not encrypted."; \
@@ -53,14 +64,18 @@ deploy:
 
 # Deploy to test VM (OrbStack)
 test:
-	@# Verify vault.yml is encrypted
+	@# Create vault.yml from example if missing
+	@if [ ! -f group_vars/all/vault.yml ]; then \
+		echo "Creating vault.yml from example..."; \
+		cp group_vars/all/vault.yml.example group_vars/all/vault.yml; \
+	fi
+	@# Auto-encrypt vault if needed (uses test password for local dev)
 	@if ! head -1 group_vars/all/vault.yml 2>/dev/null | grep -q '^\$$ANSIBLE_VAULT'; then \
-		echo "ERROR: group_vars/all/vault.yml is not encrypted."; \
-		echo ""; \
-		echo "Encrypt it first:"; \
-		echo "  ansible-vault encrypt group_vars/all/vault.yml"; \
-		echo ""; \
-		exit 1; \
+		echo "Encrypting vault with test password..."; \
+		echo "pi-pai-test" > /tmp/.vault_pass && \
+		ansible-vault encrypt group_vars/all/vault.yml --vault-password-file=/tmp/.vault_pass; \
+	else \
+		echo "pi-pai-test" > /tmp/.vault_pass; \
 	fi
 	@# Verify OAuth tokens exist
 	@if [ ! -f .tokens/.claude/.credentials.json ]; then \
@@ -72,7 +87,7 @@ test:
 		echo ""; \
 		exit 1; \
 	fi
-	ansible-playbook playbook.yml -i inventory/test.yml --ask-vault-pass
+	ansible-playbook playbook.yml -i inventory/test.yml --vault-password-file=/tmp/.vault_pass
 
 # Destroy test VM
 clean:
@@ -80,9 +95,25 @@ clean:
 
 # --- Molecule targets (full test lifecycle) ---
 
+# Helper to ensure vault exists, is encrypted, and password file exists
+define ensure_vault
+	@if [ ! -f group_vars/all/vault.yml ]; then \
+		echo "Creating vault.yml from example..."; \
+		cp group_vars/all/vault.yml.example group_vars/all/vault.yml; \
+	fi
+	@if ! head -1 group_vars/all/vault.yml 2>/dev/null | grep -q '^\$$ANSIBLE_VAULT'; then \
+		echo "Encrypting vault with test password..."; \
+		echo "pi-pai-test" > /tmp/.vault_pass && \
+		ansible-vault encrypt group_vars/all/vault.yml --vault-password-file=/tmp/.vault_pass; \
+	else \
+		echo "pi-pai-test" > /tmp/.vault_pass; \
+	fi
+endef
+
 # Full test: create → converge → verify → destroy
 test-full:
-	molecule test
+	$(ensure_vault)
+	ANSIBLE_VAULT_PASSWORD_FILE=/tmp/.vault_pass molecule test
 
 # Create VM only
 create:
@@ -90,11 +121,13 @@ create:
 
 # Run playbook against existing VM
 converge:
-	molecule converge
+	$(ensure_vault)
+	ANSIBLE_VAULT_PASSWORD_FILE=/tmp/.vault_pass molecule converge
 
 # Run verification checks
 verify:
-	molecule verify
+	$(ensure_vault)
+	ANSIBLE_VAULT_PASSWORD_FILE=/tmp/.vault_pass molecule verify
 
 # Destroy VM
 destroy:

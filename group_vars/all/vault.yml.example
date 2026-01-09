@@ -1,5 +1,6 @@
-# Encrypt this file with: ansible-vault encrypt group_vars/all/vault.yml
-# Then set ANSIBLE_VAULT_PASSWORD_FILE=~/.vault_pass or use --ask-vault-pass
+# Example vault file - copy to vault.yml and add your secrets
+# cp group_vars/all/vault.yml.example group_vars/all/vault.yml
+# Then encrypt: ansible-vault encrypt group_vars/all/vault.yml
 
 # GitHub Personal Access Token (fine-grained)
 # Required scopes: repo, admin:public_key (for auto SSH key upload)

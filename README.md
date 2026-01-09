@@ -82,9 +82,10 @@ npm install -g happy-coder
    pi_user: "your-username"    # the user you created in Pi Imager
    ```
 
-4. **Configure and encrypt secrets:**
+4. **Configure secrets (for production deploy):**
    ```bash
-   # Edit group_vars/all/vault.yml with your tokens:
+   # Copy the example and edit with your tokens:
+   cp group_vars/all/vault.yml.example group_vars/all/vault.yml
    nano group_vars/all/vault.yml
    ```
 
@@ -95,12 +96,12 @@ npm install -g happy-coder
    - `vault_context7_token`: Context7 API token for documentation lookups
 
    ```bash
-   # Encrypt the file (required - you'll choose a password):
+   # Encrypt the file (required for production deploy):
    ansible-vault encrypt group_vars/all/vault.yml
    ```
 
-   > **Note:** Encryption is required before deploy. The tokens inside are optional -
-   > leave placeholders if you prefer to configure GitHub SSH keys and Tailscale manually.
+   > **Note:** For local testing (`make test`), this step is automatic - the Makefile
+   > creates vault.yml from the example and encrypts it with a test password.
 
 5. **Authenticate locally** (required - tokens are copied to Pi during deploy):
    ```bash
@@ -125,8 +126,8 @@ pi-pai/
 │   ├── hosts.yml            # Pi host definition (uses vars from group_vars)
 │   └── test.yml             # Local VM testing inventory
 ├── group_vars/all/
-│   ├── vars.yml             # Default configuration (template)
-│   ├── vault.yml            # Secrets template (encrypt after editing)
+│   ├── vars.yml             # Default configuration
+│   ├── vault.yml.example    # Secrets template (copy to vault.yml)
 │   └── zzz_local.yml        # Your overrides (create this, gitignored)
 ├── files/
 │   ├── scripts/             # Static shell scripts
@@ -314,8 +315,11 @@ ansible-playbook playbook.yml --ask-vault-pass --ask-become-pass --tags mcp
 
 ## Troubleshooting
 
-**"vault.yml is not encrypted" error:**
+**"vault.yml not found" or "not encrypted" error:**
 ```bash
+# Create from example if missing:
+cp group_vars/all/vault.yml.example group_vars/all/vault.yml
+# Encrypt it:
 ansible-vault encrypt group_vars/all/vault.yml
 ```
 

@@ -100,34 +100,25 @@ ansible -i inventory/test.yml pi -m ping
 
 Expected output: `pi | SUCCESS => { ... "ping": "pong" }`
 
-## Step 6: Encrypt the vault (if not already)
-
-Before running the playbook, you must encrypt `group_vars/all/vault.yml`:
-
-```bash
-# Edit with your tokens (or leave placeholders for testing)
-nano group_vars/all/vault.yml
-
-# Encrypt it (choose a password you'll remember)
-ansible-vault encrypt group_vars/all/vault.yml
-```
-
-## Step 7: Run the playbook
+## Step 6: Run the playbook
 
 ```bash
 make test
 ```
 
-You'll be prompted for the vault password you chose in Step 6.
+The Makefile automatically:
+1. Creates `vault.yml` from `vault.yml.example` if missing
+2. Encrypts it with test password `pi-pai-test`
 
 Or explicitly:
 ```bash
-ansible-playbook -i inventory/test.yml playbook.yml --ask-vault-pass
+echo "pi-pai-test" > /tmp/.vault_pass
+ansible-playbook -i inventory/test.yml playbook.yml --vault-password-file=/tmp/.vault_pass
 ```
 
 Expected: All tasks complete with `failed=0`.
 
-## Step 8: Verify deployment
+## Step 7: Verify deployment
 
 Run these checks to verify the deployment:
 
@@ -236,6 +227,6 @@ The playbook automatically copies tokens from `.tokens/` to the target. Both `ma
 ## Notes
 
 - Test inventory is at `inventory/test.yml` (uses your Mac username and default SSH key)
-- Vault must be encrypted before running tests (placeholder values are fine)
-- For molecule tests, set `ANSIBLE_VAULT_PASSWORD_FILE=~/.vault_pass` to avoid password prompts
+- Vault is auto-encrypted by `make test` and molecule targets using test password `pi-pai-test`
+- For production deploy (`make deploy`), you should encrypt with your own password
 - OrbStack is free for personal use (Pro trial banner is for team features)
