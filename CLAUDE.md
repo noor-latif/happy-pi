@@ -55,7 +55,7 @@ make copy-tokens # Export tokens for deployment
 │         │ HTTP localhost:3100           │
 │         ▼                               │
 │  ┌─────────────┐                       │
-│  │ MCP Server  │ spawn/list/kill/end   │
+│  │ MCP Server  │ spawn/list/kill/restart│
 │  └─────────────┘                       │
 │         │                               │
 │         ▼                               │

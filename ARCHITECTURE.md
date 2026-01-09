@@ -70,6 +70,7 @@ pi-pai/
 │  │ • list_sessions()    │                                      │
 │  │ • kill_session()     │                                      │
 │  │ • end_session()      │                                      │
+│  │ • restart_self()     │──▶ tmux respawn-window (atomic)      │
 │  └──────────────────────┘                                      │
 │                                                                 │
 │  ┌──────────────────────┐                                      │

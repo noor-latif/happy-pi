@@ -281,6 +281,7 @@ claude mcp add github \
 │  │ list_sessions() │                                       │
 │  │ kill_session()  │                                       │
 │  │ end_session()   │                                       │
+│  │ restart_self()  │                                       │
 │  └─────────────────┘                                       │
 │                                                             │
 │  ┌─────────────────────┐                                   │
