@@ -1,6 +1,6 @@
 # Pi-Pai Makefile
 
-.PHONY: setup lint syntax deploy test test-full verify create destroy clean auth copy-tokens
+.PHONY: setup lint syntax deploy test test-full verify create destroy clean auth copy-tokens push-tokens
 
 # First-time setup after cloning
 setup:
@@ -222,3 +222,17 @@ copy-tokens:
 	@cp ~/.happy/access.key .tokens/.happy/ && echo "✓ Copied Happy tokens"
 	@echo ""
 	@echo "Tokens ready in .tokens/ - run 'make deploy' to deploy"
+
+# Quick push tokens to Pi (bypasses Ansible for speed)
+push-tokens:
+	@if [ ! -f .tokens/.claude/.credentials.json ]; then \
+		echo "ERROR: No tokens in .tokens/"; \
+		echo "Run 'make copy-tokens' first."; \
+		exit 1; \
+	fi
+	@echo "Pushing tokens to Pi..."
+	@scp -q .tokens/.claude/.credentials.json claude-shell:~/.claude-docker/
+	@scp -q .tokens/.happy/access.key claude-shell:~/.claude-docker/.happy/ 2>/dev/null || true
+	@echo "Restarting claude-tmux..."
+	@ssh claude-shell "systemctl --user restart claude-tmux"
+	@echo "✓ Done"
