@@ -127,6 +127,21 @@
       failed_when: pnpm_version.rc != 0
 
     # =========================================================================
+    # Playwright / Browser Checks
+    # =========================================================================
+    - name: Check Playwright is installed in Docker image
+      ansible.builtin.command: docker run --rm claude-code npx playwright --version
+      register: playwright_version
+      changed_when: false
+      failed_when: playwright_version.rc != 0
+
+    - name: Check Chromium browser is available
+      ansible.builtin.command: docker run --rm claude-code npx playwright install --dry-run chromium
+      register: chromium_check
+      changed_when: false
+      failed_when: "'chromium' not in chromium_check.stdout"
+
+    # =========================================================================
     # File and Directory Checks
     # =========================================================================
     - name: Check SSH key was generated

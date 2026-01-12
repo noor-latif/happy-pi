@@ -13,6 +13,11 @@ RUN corepack enable && corepack prepare pnpm@latest --activate
 # happy-coder (happy.engineering) wraps Claude Code for phone access via text/voice
 RUN npm install -g @anthropic-ai/claude-code happy-coder
 
+# Install Playwright with Chromium browser and system dependencies
+# Uses --with-deps to install required system libraries (libnss3, libatk, etc.)
+RUN npx -y playwright install --with-deps chromium && \
+    rm -rf /var/lib/apt/lists/*
+
 # node user already has UID 1000, matching typical host user for bind mounts
 RUN echo "node ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
 
